@@ -18,8 +18,10 @@ LLM 설계제안(σ=6FL/Wt² 직접 계산, 두께 18.3mm 도출)→검증 게�
 ## ✅ Phase 1 — 형상 생성 MVP (코드 완료, FreeCAD는 설치 환경에서)
 - ✅ 볼트 홀(장착점) + 필렛 형상 — `geometry/bracket.py`
 - ✅ DFM(제조성) 검증: 최소 벽두께·필렛·홀 모서리 여유 — `validation/dfm.py`
-- ⏳ FreeCAD 실연결(STEP/FCStd) — `to_freecad()` 구현 완료, **FreeCAD 설치 시 자동 동작**
-  (이 환경엔 FreeCAD/conda 없음 → dry-run으로 검증)
+- ✅ **CAD 파일 산출 배선** — `BracketModel.export()`(STEP+FCStd) + `api.design_part(cad=True)`가
+  수렴된 **최종(경량화 반영) 모델**을 자동 export. CLI에 `[CAD]`/생성 경로 출력 — `geometry/bracket.py`, `api.py`
+- ⏳ FreeCAD 실연결(STEP/FCStd) — 배선 완료, **FreeCAD 설치 시 실제 파일 자동 생성**
+  (이 환경엔 FreeCAD/conda 없음 → dry-run 안내 + 미설치 시 우아하게 건너뜀)
 
 ## ✅ Phase 2 — 구조 검증 추상화 (FEM 교체 준비 완료)
 - ✅ `StructuralSolver` 인터페이스로 솔버 분리 — `validation/structural.py`

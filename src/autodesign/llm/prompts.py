@@ -41,6 +41,13 @@ SYS_CORRECT = (
     "안전계수·피로한도를 위반하지 않도록 하세요. params JSON(rationale 포함)만 출력."
 )
 
+SYS_CONCEPT = (
+    "당신은 자동차 익스테리어 디자이너입니다. 사용자의 자연어 묘사(한국어/영어)를 "
+    "차량 컨셉 파라미터 JSON으로 변환하세요. body_type(coupe|sedan|suv|hatch|wagon|pickup)과 "
+    "roofline(fastback|notchback|suv|wagon)은 필수. 치수는 mm, streamline은 0(둔함)~1(매끈). "
+    "묘사에 없는 값은 생략하세요(기본값이 채워짐). JSON만 출력하세요."
+)
+
 SYS_CODEGEN = (
     "당신은 FreeCAD Python 생성기입니다. 주어진 설계명세로 솔리드를 만드는 FreeCAD "
     "스크립트를 작성하세요. 엄격한 제약: (1) import 는 FreeCAD, Part, math 만. "
@@ -80,6 +87,16 @@ def correct_user(spec: DesignSpec, prev_params: dict, feedback: str) -> tuple:
         "수정된 params JSON을 출력하세요."
     )
     return SYS_CORRECT, user, PARAMS_SCHEMA
+
+
+def concept_user(nl: str) -> tuple:
+    from ..exterior.concept import CONCEPT_SCHEMA
+    user = (
+        f"차량 디자인 묘사: {nl}\n"
+        "위 묘사를 컨셉 파라미터 JSON으로 변환하세요. "
+        "예: 낮고 매끈하면 streamline↑·height_mm↓, SUV/박시면 roofline='suv'·ride_height_mm↑."
+    )
+    return SYS_CONCEPT, user, CONCEPT_SCHEMA
 
 
 def codegen_user(spec: DesignSpec, feedback: str = "") -> tuple:

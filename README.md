@@ -6,13 +6,33 @@
 > **상태**: Phase 0~7 + 실 LLM(R1~R7) + Hermes(Nous/Ollama) 백엔드 완료 · 테스트 68 통과 ·
 > Hermes 라이브 E2E 검증 성공. 현황/다음 할 일은 [PROGRESS.md](PROGRESS.md).
 
-## ⚡ 빠른 시작 (맥북프로)
+## 🖱 더블클릭 실행 (macOS, 가장 쉬움)
+Finder에서 프로젝트 폴더의 아래 파일을 **더블클릭**하면 바로 실행됩니다 (환경 자동 준비 + 끝나면 보고서 자동 열림):
+- **`쉬운실행.command`** ★ — 초등학생도 OK: 질문 2개(무엇을? 어떻게?)에 답하면
+  자동차 디자인(3D)·부품을 만들어 보여줌. 로컬 AI(Ollama) 있으면 자동 사용, 없으면 기본 모드
+- **`AutoDesign.command`** — 오프라인 데모 (인터넷/LLM 설치 불필요, 항상 동작)
+- **`AutoDesign-LocalLLM.command`** — 100% 로컬 LLM(Ollama)로 실행
+
+> 처음 더블클릭 시 "확인되지 않은 개발자" 경고가 뜨면: 파일 우클릭 → **열기** → **열기**. (1회만)
+> Dock에 두려면 `.command` 파일을 Dock으로 드래그하세요.
+
+## ⚡ 빠른 시작 (터미널)
 ```bash
 cd ~/Desktop/Cursor/autodesign-llm
 ./scripts/setup.sh                              # 1회: 환경 + 테스트
-./scripts/run.sh --optimize --report            # 데모(오프라인)
+./scripts/run.sh --optimize --report            # 데모(오프라인, mock)
 ./scripts/run.sh --backend hermes --trace "엔진 브래킷, 5kN, AlSi10Mg, 안전계수 2.0, 피로"
 ```
+
+### 🖥 100% 로컬 LLM으로 실행 (클라우드/API 키 불필요)
+```bash
+./scripts/setup-local-llm.sh                    # 1회: Ollama 설치 + 코드모델(qwen2.5-coder:7b) 다운로드
+./scripts/run-local.sh --report --trace "엔진 브래킷, 5kN, AlSi10Mg, 안전계수 2.0, 피로"
+# 모델 변경(품질↑):  OLLAMA_MODEL=qwen2.5-coder:32b ./scripts/run-local.sh --optimize --report
+```
+> `run-local.sh`는 venv·Ollama 서버·모델 누락분을 자동으로 채운 뒤 `--backend local`로 실행합니다.
+> 설계 치수·하중 데이터가 외부로 나가지 않아 IP 보안에 유리합니다.
+
 전체 셋업·운영·다음 단계 가이드 → **[docs/08-DEV-SETUP.md](docs/08-DEV-SETUP.md)**
 
 ## 폴더 구성

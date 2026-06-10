@@ -139,6 +139,30 @@ class BracketModel:
                 shape.exportBrep(out_path)
         return shape
 
+    def export(self, out_dir: str = ".", basename: Optional[str] = None) -> dict:
+        """최종 솔리드를 STEP + FCStd 파일로 저장하고 경로를 반환.
+
+        FreeCAD 미설치 시 RuntimeError(호출측에서 dry-run 처리). 설치 시 산출물 생성.
+        """
+        import os
+
+        App = get_freecad()                       # 미설치면 여기서 RuntimeError
+        base = basename or self.spec.part_type or "part"
+        os.makedirs(out_dir, exist_ok=True)
+        step_path = os.path.join(out_dir, f"{base}.step")
+        fcstd_path = os.path.join(out_dir, f"{base}.FCStd")
+
+        shape = self.to_freecad()                 # 볼트홀·필렛 포함 솔리드
+        shape.exportStep(step_path)
+
+        doc = App.newDocument(base)
+        obj = doc.addObject("Part::Feature", base)
+        obj.Shape = shape
+        doc.recompute()
+        doc.saveAs(fcstd_path)
+        App.closeDocument(doc.Name)
+        return {"step": step_path, "fcstd": fcstd_path}
+
 
 def build_bracket(spec: DesignSpec, params: dict) -> BracketModel:
     """LLM이 제안한 파라미터로 브래킷 모델 생성."""

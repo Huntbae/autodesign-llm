@@ -9,9 +9,13 @@
 from .concept import ConceptSpec, MockConceptGenerator
 from .aero import AeroResult, AnalyticDragSolver, OpenFOAMSolver
 from .loop import ExteriorLoop, ExteriorResult
+from .mesh import (ConceptMesh, ProceduralCarMesh, build_car_mesh,
+                   get_concept_mesh_generator)
 
 __all__ = [
     "ConceptSpec", "MockConceptGenerator",
     "AeroResult", "AnalyticDragSolver", "OpenFOAMSolver",
     "ExteriorLoop", "ExteriorResult",
+    "ConceptMesh", "ProceduralCarMesh", "build_car_mesh",
+    "get_concept_mesh_generator",
 ]

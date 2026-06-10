@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# ▶ 더블클릭하면 시작! (초등학생도 OK)
+#   질문 2개에 답하면 컴퓨터가 자동차(또는 부품)를 만들어서 보여줍니다.
+set -uo pipefail
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$DIR"
+clear
+echo ""
+echo "  ╔══════════════════════════════════════╗"
+echo "  ║   🚗  말로 만드는 자동차 공장  🔧      ║"
+echo "  ╚══════════════════════════════════════╝"
+echo ""
+
+# ── 0) 컴퓨터 준비(처음 한 번만, 자동) ──
+if [ ! -x ".venv/bin/python" ]; then
+  echo "  ⏳ 처음이라 준비 중이에요... (1~2분, 한 번만)"
+  bash scripts/setup.sh >/dev/null 2>&1 || bash scripts/setup.sh
+  echo "  ✅ 준비 끝!"
+  echo ""
+fi
+
+# ── 똑똑한 두뇌(로컬 LLM) 자동 선택: 서버 + 설치된 모델까지 확인 ──
+BACKEND="mock"
+HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL=""
+if command -v ollama >/dev/null 2>&1; then
+  curl -sf "${HOST}/api/tags" >/dev/null 2>&1 || { ollama serve >/tmp/ollama.log 2>&1 & sleep 3; }
+  TAGS="$(curl -sf "${HOST}/api/tags" 2>/dev/null || echo "")"
+  if [ -n "$TAGS" ]; then
+    # 쓰고 싶은 모델이 실제 설치돼 있는지 확인(없는 모델을 부르면 404가 남)
+    for cand in "${OLLAMA_MODEL:-}" qwen2.5-coder:7b qwen2.5-coder:32b hermes3; do
+      [ -n "$cand" ] || continue
+      if printf '%s' "$TAGS" | grep -q "\"name\":\"$cand\""; then MODEL="$cand"; break; fi
+    done
+    # 그래도 없으면 설치된 아무 모델이나 사용
+    if [ -z "$MODEL" ]; then
+      MODEL="$(printf '%s' "$TAGS" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)"
+    fi
+    if [ -n "$MODEL" ]; then
+      BACKEND="local"
+      export OLLAMA_HOST="$HOST" OLLAMA_MODEL="$MODEL"
+    fi
+  fi
+fi
+if [ "$BACKEND" = "local" ]; then
+  echo "  🧠 인공지능 두뇌: 내 컴퓨터의 AI (Ollama · $MODEL)"
+elif command -v ollama >/dev/null 2>&1; then
+  echo "  🧠 인공지능 두뇌: 기본 모드 (AI 모델이 아직 없어요 → 어른과 함께: ./scripts/setup-local-llm.sh)"
+else
+  echo "  🧠 인공지능 두뇌: 기본 모드 (AI 설치는 어른과 함께: ./scripts/setup-local-llm.sh)"
+fi
+echo ""
+
+# ── 1) 무엇을 만들까? ──
+echo "  ① 무엇을 만들까요? 숫자를 누르고 Enter!"
+echo "     1) 🚗 자동차 디자인"
+echo "     2) 🔩 자동차 부품 (브래킷)"
+printf "     👉 번호: "
+read -r CHOICE
+CHOICE="${CHOICE:-1}"
+echo ""
+
+# ── 2) 말로 설명하기 ──
+if [ "$CHOICE" = "2" ]; then
+  DEFAULT="엔진 마운트 브래킷, 수직 5kN, 재질 AlSi10Mg, 안전계수 2.0, 피로 내구"
+  echo "  ② 어떤 부품인지 말해 주세요 (그냥 Enter = 예시로 만들기)"
+else
+  DEFAULT="낮은 스포츠 쿠페, 패스트백, 큰 휠"
+  echo "  ② 어떤 자동차인지 말해 주세요 (그냥 Enter = 멋진 스포츠카)"
+  echo "     예) 높은 SUV / 미드십 슈퍼카, 매우 낮고 와이드 / 세단, 노치백"
+fi
+printf "     👉 설명: "
+read -r WORDS
+WORDS="${WORDS:-$DEFAULT}"
+echo ""
+echo "  🏭 만드는 중... 조금만 기다려 주세요!"
+echo "  ──────────────────────────────────────"
+
+# ── 3) 실행 (성공/실패를 솔직하게 알려주기) ──
+RC=0
+if [ "$CHOICE" = "2" ]; then
+  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --optimize --report "$WORDS" || RC=$?
+  echo ""
+  if [ "$RC" -ge 2 ]; then
+    echo "  😢 앗, 문제가 생겼어요. 위의 메시지를 어른에게 보여주세요."
+  else
+    RESULT_HTML="review_report.html"
+    if command -v open >/dev/null 2>&1 && [ -f "$RESULT_HTML" ]; then open "$RESULT_HTML"; fi
+    echo "  🎉 완성! 부품 보고서가 열렸어요: $DIR/$RESULT_HTML"
+  fi
+else
+  rm -f car_body_concept.obj                    # 지난 결과가 실패를 가리지 않게
+  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --exterior "$WORDS" || RC=$?
+  echo ""
+  OBJ="car_body_concept.obj"
+  if [ "$RC" -ge 2 ] || [ ! -f "$OBJ" ]; then
+    echo "  😢 앗, 문제가 생겼어요. 위의 메시지를 어른에게 보여주세요."
+  else
+    if command -v qlmanage >/dev/null 2>&1; then
+      qlmanage -p "$OBJ" >/dev/null 2>&1 &     # 맥의 3D 미리보기로 띄우기
+    elif command -v open >/dev/null 2>&1; then
+      open -R "$OBJ"                            # 안 되면 파일 위치 보여주기
+    fi
+    echo "  🎉 완성! 자동차 3D 파일: $DIR/$OBJ"
+    echo "     (Finder에서 파일을 누르고 스페이스바 = 3D로 빙글빙글 보기)"
+  fi
+fi
+echo ""
+echo "  또 만들고 싶으면 이 아이콘을 다시 더블클릭하세요! 👋"

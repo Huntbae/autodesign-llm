@@ -1,8 +1,12 @@
-"""외형 개념 형상 — 파라메트릭 컨셉(공력 평가용 추상)."""
+"""외형 개념 형상 — 텍스트로 차 스타일을 묘사하는 파라메트릭 컨셉.
+
+자연어에서 차종·루프라인·비례·스탠스·휠을 읽어 ConceptSpec에 채운다.
+이 파라미터들이 mesh.build_car_mesh에서 실제 3D 실루엣으로 반영된다.
+"""
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 
 @dataclass
@@ -10,31 +14,147 @@ class ConceptSpec:
     name: str
     length_mm: float = 4500.0
     width_mm: float = 1850.0
-    height_mm: float = 1450.0
-    streamline: float = 0.4          # 0(둔함)~1(매끈) — 공력 형상 지표
+    height_mm: float = 1400.0
+    streamline: float = 0.5          # 0(둔함)~1(매끈) — 공력 형상 지표
     target_cd: float = 0.30          # 목표 항력계수
 
+    # --- 스타일 파라미터 (텍스트로 제어) ---
+    body_type: str = "coupe"         # coupe|sedan|suv|hatch|wagon|pickup
+    roofline: str = "fastback"       # fastback|notchback|suv|wagon
+    hood_frac: float = 0.42          # 전장 대비 보닛 길이(롱노즈↑)
+    cab_frac: float = 0.34           # 캐빈(루프) 길이 비율
+    ride_height_mm: float = 150.0    # 지상고(낮음~SUV 높음)
+    wheel_dia_mm: float = 660.0      # 휠 외경(대구경↑)
+    overhang: float = 0.5            # 0(짧은 오버행/롱휠베이스)~1(긴 오버행)
+
     def frontal_area_m2(self) -> float:
-        # 전면투영면적 ≈ 폭×높이×충진율
         return (self.width_mm * 1e-3) * (self.height_mm * 1e-3) * 0.85
 
 
+# LLM 구조화 출력 스키마 — 자연어 묘사 → 컨셉 파라미터
+CONCEPT_SCHEMA: dict = {
+    "type": "object",
+    "required": ["body_type", "roofline"],
+    "properties": {
+        "body_type": {"type": "string",
+                      "enum": ["coupe", "sedan", "suv", "hatch", "wagon", "pickup", "van"]},
+        "roofline": {"type": "string",
+                     "enum": ["fastback", "notchback", "suv", "wagon"]},
+        "length_mm": {"type": "number"}, "width_mm": {"type": "number"},
+        "height_mm": {"type": "number"}, "streamline": {"type": "number"},
+        "target_cd": {"type": "number"}, "ride_height_mm": {"type": "number"},
+        "wheel_dia_mm": {"type": "number"}, "hood_frac": {"type": "number"},
+        "cab_frac": {"type": "number"}, "overhang": {"type": "number"},
+        "rationale": {"type": "string"},
+    },
+}
+
+# 물리적으로 말이 되는 범위(LLM 출력 클램프)
+_BOUNDS = {
+    "length_mm": (3400.0, 5900.0), "width_mm": (1500.0, 2150.0),
+    "height_mm": (950.0, 2050.0), "streamline": (0.0, 1.0),
+    "target_cd": (0.20, 0.60), "ride_height_mm": (80.0, 400.0),
+    "wheel_dia_mm": (550.0, 900.0), "hood_frac": (0.22, 0.55),
+    "cab_frac": (0.25, 0.55), "overhang": (0.2, 1.0),
+}
+
+
+def apply_concept_overrides(spec: ConceptSpec, data: dict) -> ConceptSpec:
+    """LLM이 낸 파라미터를 기본 컨셉 위에 덮어쓰기(범위 클램프 포함)."""
+    out = replace(spec)
+    for key, val in data.items():
+        if not hasattr(out, key) or val is None:
+            continue
+        if key in _BOUNDS and isinstance(val, (int, float)):
+            lo, hi = _BOUNDS[key]
+            val = max(lo, min(float(val), hi))
+        if isinstance(getattr(out, key), str) and not isinstance(val, str):
+            continue
+        setattr(out, key, val)
+    return out
+
+
+# 차종별 기본 프리셋(텍스트 키워드로 선택)
+_PRESETS = {
+    "supercar": dict(body_type="coupe", roofline="fastback", length_mm=4550, width_mm=2000,
+                     height_mm=1180, streamline=0.85, hood_frac=0.30, cab_frac=0.40,
+                     ride_height_mm=110, wheel_dia_mm=700, overhang=0.25, target_cd=0.32),
+    "coupe":   dict(body_type="coupe", roofline="fastback", height_mm=1330, streamline=0.70,
+                    hood_frac=0.46, cab_frac=0.32, ride_height_mm=140, wheel_dia_mm=680),
+    "sedan":   dict(body_type="sedan", roofline="notchback", height_mm=1460, streamline=0.45,
+                    hood_frac=0.40, cab_frac=0.40, ride_height_mm=150, wheel_dia_mm=650),
+    "hatch":   dict(body_type="hatch", roofline="fastback", length_mm=4100, height_mm=1450,
+                    streamline=0.40, hood_frac=0.34, cab_frac=0.42, ride_height_mm=150),
+    "wagon":   dict(body_type="wagon", roofline="wagon", height_mm=1480, streamline=0.42,
+                    hood_frac=0.38, cab_frac=0.48, ride_height_mm=160),
+    "suv":     dict(body_type="suv", roofline="suv", length_mm=4700, width_mm=1920,
+                    height_mm=1720, streamline=0.30, hood_frac=0.34, cab_frac=0.48,
+                    ride_height_mm=300, wheel_dia_mm=760, target_cd=0.34),
+    "pickup":  dict(body_type="pickup", roofline="suv", length_mm=5300, width_mm=1980,
+                    height_mm=1820, streamline=0.28, hood_frac=0.34, cab_frac=0.34,
+                    ride_height_mm=330, wheel_dia_mm=800, target_cd=0.40),
+    "van":     dict(body_type="van", roofline="suv", length_mm=4400, width_mm=1800,
+                    height_mm=1750, streamline=0.30, hood_frac=0.24, cab_frac=0.55,
+                    ride_height_mm=180, wheel_dia_mm=640, target_cd=0.36),
+}
+
+
 class MockConceptGenerator:
-    """자연어 → 개념 형상(데모). 실제는 TRELLIS/Hunyuan3D/Blender 어댑터로 교체."""
+    """자연어 → 개념 형상. 차종 프리셋 + 스타일 수식어 파싱.
+
+    (고품질·사진 기반은 mesh.get_concept_mesh_generator의 AI 어댑터로 교체)
+    """
 
     def generate(self, natural_language: str) -> ConceptSpec:
         t = natural_language
-        streamline = 0.4
-        if re.search(r"쿠페|스포츠|유선형|낮은|매끈", t):
-            streamline = 0.6
-        if re.search(r"SUV|박스|각진|높은", t):
-            streamline = 0.3
+        tl = t.lower()
+
+        # 1) 차종 프리셋 선택
+        preset = "coupe"
+        if re.search(r"슈퍼카|하이퍼카|미드십|supercar|hypercar", tl): preset = "supercar"
+        elif re.search(r"박스카|미니밴|캠핑카|\bvan\b|mpv", tl): preset = "van"
+        elif re.search(r"suv|크로스오버|crossover", tl): preset = "suv"
+        elif re.search(r"픽업|트럭|pickup|truck", tl): preset = "pickup"
+        elif re.search(r"세단|saloon|sedan", tl): preset = "sedan"
+        elif re.search(r"왜건|에스테이트|wagon|estate", tl): preset = "wagon"
+        elif re.search(r"해치백|하치백|hatch", tl): preset = "hatch"
+        elif re.search(r"쿠페|스포츠|coupe|sports", tl): preset = "coupe"
+        spec = ConceptSpec(name="car_body_concept", **_PRESETS[preset])
+
+        # 2) 루프라인 수식어
+        if re.search(r"패스트백|fastback|쿠페형", tl): spec.roofline = "fastback"
+        elif re.search(r"노치백|notchback|트렁크|trunk", tl): spec.roofline = "notchback"
+        elif re.search(r"박스|각진|boxy|박시", tl): spec.roofline = "suv"
+
+        # 3) 비례/스탠스 수식어 (가산 조정)
+        if re.search(r"롱노즈|롱후드|long\s*hood|긴\s*보닛", tl):
+            spec.hood_frac = min(spec.hood_frac + 0.10, 0.55)
+        if re.search(r"캡포워드|cab[-\s]?forward|짧은\s*보닛", tl):
+            spec.hood_frac = max(spec.hood_frac - 0.10, 0.22)
+        if re.search(r"낮[은고게아]|로우|슬램|low|slammed", tl):
+            spec.height_mm -= 90; spec.ride_height_mm = max(90, spec.ride_height_mm - 50)
+            spec.streamline = min(spec.streamline + 0.08, 1.0)
+        if re.search(r"높[은고게아]|키큰|tall|raised|리프트", tl):
+            spec.height_mm += 90; spec.ride_height_mm += 60
+        if re.search(r"와이드|넓은|wide", tl): spec.width_mm += 90
+        if re.search(r"좁은|narrow", tl): spec.width_mm -= 80
+        if re.search(r"롱휠베이스|long\s*wheelbase|짧은\s*오버행", tl):
+            spec.overhang = max(0.2, spec.overhang - 0.2)
+        if re.search(r"큰\s*휠|대구경|big\s*wheels|large\s*wheels|22|23|24", tl):
+            spec.wheel_dia_mm += 80
+        if re.search(r"유선형|매끈|sleek|streamlin", tl):
+            spec.streamline = min(spec.streamline + 0.10, 1.0)
+
+        # 4) 치수/목표 직접 명시 파싱
         m = re.search(r"Cd\s*([\d.]+)", t, re.I)
-        target = float(m.group(1)) if m else 0.30
-        h = 1700.0 if re.search(r"SUV|높은", t) else 1450.0
-        return ConceptSpec(name="car_body_concept", height_mm=h,
-                           streamline=streamline, target_cd=target)
+        if m: spec.target_cd = float(m.group(1))
+        m = re.search(r"전장\s*([\d]{3,5})|length\s*([\d]{3,5})", tl)
+        if m: spec.length_mm = float(next(g for g in m.groups() if g))
+        m = re.search(r"전폭\s*([\d]{3,5})|width\s*([\d]{3,5})", tl)
+        if m: spec.width_mm = float(next(g for g in m.groups() if g))
+        m = re.search(r"전고\s*([\d]{3,5})|height\s*([\d]{3,5})", tl)
+        if m: spec.height_mm = float(next(g for g in m.groups() if g))
+        return spec
 
     def restyle(self, concept: ConceptSpec, delta_streamline: float) -> ConceptSpec:
-        from dataclasses import replace
         return replace(concept, streamline=min(concept.streamline + delta_streamline, 1.0))

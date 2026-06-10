@@ -5,7 +5,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 from .aero import AeroResult, AeroSolver, AnalyticDragSolver
 from .concept import ConceptSpec, MockConceptGenerator
@@ -24,6 +24,8 @@ class ExteriorResult:
     concept: Optional[ConceptSpec] = None
     iterations: List[ExteriorIteration] = field(default_factory=list)
     converged: bool = False
+    mesh_paths: Dict[str, str] = field(default_factory=dict)
+    mesh_source: str = ""
 
     @property
     def n_iter(self) -> int:
@@ -37,6 +39,9 @@ class ExteriorResult:
                          f"Cd={it.aero.cd:.3f}  항력={it.aero.drag_N:.0f}N  {mark}")
         status = "수렴(Cd 목표 달성)" if self.converged else "미수렴"
         lines.append(f"결과: {status} (반복 {self.n_iter}회)")
+        if self.mesh_paths:
+            lines.append(f"컨셉 3D 메시({self.mesh_source}): "
+                         + ", ".join(f"{k.upper()}={v}" for k, v in self.mesh_paths.items()))
         return "\n".join(lines)
 
 

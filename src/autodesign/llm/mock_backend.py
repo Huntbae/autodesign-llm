@@ -52,6 +52,12 @@ class MockLLM:
             notes=f"parsed from: {natural_language!r}",
         )
 
+    # ----------------------------------------------------------- ①-b 외형 컨셉
+    def parse_concept(self, natural_language: str):
+        """자연어 차량 묘사 → ConceptSpec (규칙 기반; 실 LLM이 대체)."""
+        from ..exterior.concept import MockConceptGenerator
+        return MockConceptGenerator().generate(natural_language)
+
     # ----------------------------------------------------------- ④ 제안
     def propose(self, spec: DesignSpec) -> GenerationResult:
         """초기 두께를 다소 얇게 제안 → 검증에서 보강하도록(루프 시연)."""
