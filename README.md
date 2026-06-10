@@ -6,7 +6,15 @@
 > **상태**: Phase 0~7 + 실 LLM(R1~R7) + Hermes(Nous/Ollama) 백엔드 완료 · 테스트 68 통과 ·
 > Hermes 라이브 E2E 검증 성공. 현황/다음 할 일은 [PROGRESS.md](PROGRESS.md).
 
-## ⚡ 빠른 시작 (맥북프로)
+## 🖱 더블클릭 실행 (macOS, 가장 쉬움)
+Finder에서 프로젝트 폴더의 아래 파일을 **더블클릭**하면 바로 실행됩니다 (환경 자동 준비 + 끝나면 보고서 자동 열림):
+- **`AutoDesign.command`** — 오프라인 데모 (인터넷/LLM 설치 불필요, 항상 동작)
+- **`AutoDesign-LocalLLM.command`** — 100% 로컬 LLM(Ollama)로 실행
+
+> 처음 더블클릭 시 "확인되지 않은 개발자" 경고가 뜨면: 파일 우클릭 → **열기** → **열기**. (1회만)
+> Dock에 두려면 `.command` 파일을 Dock으로 드래그하세요.
+
+## ⚡ 빠른 시작 (터미널)
 ```bash
 cd ~/Desktop/Cursor/autodesign-llm
 ./scripts/setup.sh                              # 1회: 환경 + 테스트
