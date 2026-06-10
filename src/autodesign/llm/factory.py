@@ -43,5 +43,8 @@ def get_llm(backend: str = "auto", **kw) -> LLMClient:
                 kw.setdefault("model", model)
             return HermesLLM(**kw)
         from .local_backend import LocalLLM
+        model = os.getenv("OLLAMA_MODEL")
+        if model:
+            kw.setdefault("model", model)
         return LocalLLM(**kw)
     raise ValueError(f"알 수 없는 backend: {backend}")

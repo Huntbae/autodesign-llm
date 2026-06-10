@@ -10,9 +10,19 @@
 ```bash
 cd ~/Desktop/Cursor/autodesign-llm
 ./scripts/setup.sh                              # 1회: 환경 + 테스트
-./scripts/run.sh --optimize --report            # 데모(오프라인)
+./scripts/run.sh --optimize --report            # 데모(오프라인, mock)
 ./scripts/run.sh --backend hermes --trace "엔진 브래킷, 5kN, AlSi10Mg, 안전계수 2.0, 피로"
 ```
+
+### 🖥 100% 로컬 LLM으로 실행 (클라우드/API 키 불필요)
+```bash
+./scripts/setup-local-llm.sh                    # 1회: Ollama 설치 + 코드모델(qwen2.5-coder:7b) 다운로드
+./scripts/run-local.sh --report --trace "엔진 브래킷, 5kN, AlSi10Mg, 안전계수 2.0, 피로"
+# 모델 변경(품질↑):  OLLAMA_MODEL=qwen2.5-coder:32b ./scripts/run-local.sh --optimize --report
+```
+> `run-local.sh`는 venv·Ollama 서버·모델 누락분을 자동으로 채운 뒤 `--backend local`로 실행합니다.
+> 설계 치수·하중 데이터가 외부로 나가지 않아 IP 보안에 유리합니다.
+
 전체 셋업·운영·다음 단계 가이드 → **[docs/08-DEV-SETUP.md](docs/08-DEV-SETUP.md)**
 
 ## 폴더 구성
