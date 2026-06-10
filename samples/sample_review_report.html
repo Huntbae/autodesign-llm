@@ -1,0 +1,40 @@
+<!doctype html><html lang="ko"><head><meta charset="utf-8">
+<title>AutoDesign-LLM 검토보고서 — engine_mount_bracket</title>
+<style>
+ body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;margin:32px;color:#202124;line-height:1.5}
+ h1{color:#0B2545} h2{color:#1A73E8;border-bottom:2px solid #E8F0FE;padding-bottom:4px;margin-top:28px}
+ table{border-collapse:collapse;width:100%;margin:8px 0;font-size:14px}
+ th,td{border:1px solid #ccc;padding:6px 8px;text-align:left} th{background:#0B2545;color:#fff}
+ tr:nth-child(even) td{background:#F4F6F8}
+ .status{font-size:18px;font-weight:bold;padding:8px 12px;border-radius:6px;display:inline-block;
+   background:#E6F4EA;color:#188038}
+ .warn{background:#FEF7E0;border-left:4px solid #F9AB00;padding:10px;margin:12px 0}
+ .pre{background:#F8F9FA;border:1px solid #eee;padding:12px;border-radius:6px;font-size:13px}
+</style></head><body>
+<h1>AutoDesign-LLM 검토보고서</h1>
+<p>부품: <b>engine_mount_bracket</b> · 재료: <b>AlSi10Mg</b> · 생성: 2026-06-10 00:50</p>
+<p class="status">결과: 수렴(모든 검증 통과) (반복 2회)</p>
+
+<h2>1. 설계 요구사항</h2>
+<table>
+ <tr><th>항목</th><th>값</th></tr>
+ <tr><td>대표하중</td><td>5000 N</td></tr>
+ <tr><td>모멘트암</td><td>20.0 mm</td></tr>
+ <tr><td>목표 안전계수</td><td>2.0</td></tr>
+ <tr><td>1차 고유진동수</td><td>150.0 Hz</td></tr>
+ <tr><td>피로 목표</td><td>1e+06 cyc</td></tr>
+</table>
+
+<h2>2. 사전 검토 (RAG 근거)</h2>
+<div class="pre">── 사전 검토 리포트 (RAG 근거) ──<br>• 재료: AlSi10Mg (밀도 2670 kg/m³)<br>  ⚠️ 물성 출처 미검증: 항복 230MPa·피로한도 90MPa는 자리표시자 — 데이터시트로 교체 필요.<br>• 대표하중 5000 N, 모멘트암 20.0 mm, 목표 SF 2.0, 1차 고유진동수 ≥ 150.0Hz<br>• 관련 설계 근거:<br>  [1] 엔진 마운트·브래킷의 1차 고유진동수는 엔진 가진 주파수 대역(공회전~상용 RPM)과 겹치지 않도록 충분히 높게(또는 분리되게) 설계해 공진을 피한다. 강성↑(두께·리브) 또는 질량 조정으로 주파수를 이동시킨다.<br>      ↳ 출처: NVH 설계 일반지식 — 차량별 가진 스펙트럼 확인 필요  (관련도 0.21)<br>  [2] 굽힘·인장 하중을 받는 브래킷의 내측 코너에는 라운드(필렛)를 주어 응력집중을 완화한다. 날카로운 코너는 응력집중계수가 커져 피로 균열의 시작점이 된다. 최소 R은 인접 벽두께의 0.5~1배를 권장.<br>      ↳ 출처: 일반 기계설계 공학지식 — 규격 원문(예: 사내 설계기준) 확인 필요  (관련도 0.19)<br>  [3] 서스펜션·샤시 부품은 수백만 사이클의 변동 하중을 받으므로 정적 강도뿐 아니라 피로 내구를 반드시 검토한다. 재료의 피로한도 이하로 응력진폭을 관리하고, 응력집중부(코너·홀)를 우선 점검한다(S-N 선도, Miner 누적손상).<br>      ↳ 출처: 피로설계 일반지식 — 부품별 시험데이터로 검증 필요  (관련도 0.17)<br>  [4] 볼트 체결부는 홀 중심에서 자유 모서리까지 충분한 여유(통상 볼트 직경의 1.5~2배 이상)를 두어 베어링 파손과 균열을 방지한다. 체결 토크는 볼트 등급·직경에 맞춰 규정값을 사용한다.<br>      ↳ 출처: 체결 설계 일반지침 — 규격(예: VDI 2230 등) 원문 확인 필요  (관련도 0.15)<br>• 결론: 위 근거에 따라 코너 필렛·홀 모서리 여유·모달 분리를 검증 게이트에서 확인.</div>
+
+<h2>3. 자기교정 이력</h2>
+<table><tr><th>반복</th><th>두께</th><th>통과</th><th>피드백</th></tr><tr><td>1</td><td>7.22 mm</td><td>❌</td><td>[safety_factor] [analytic-bending] 최대응력 287.8MPa, SF 0.80 (목표 &gt;= 2.0) ; [fatigue] σa 287.8MPa, 수명 2.1e+03cyc (고주기 S-N 보간 추정) (목표 &gt;= 1e+06 cyc) ; SF=0.80</td></tr><tr><td>2</td><td>13.56 mm</td><td>✅</td><td>모든 검증 통과.</td></tr></table>
+
+<h2>4. 최종 검증 결과</h2>
+<table><tr><th></th><th>항목</th><th>값</th><th>목표</th><th>상세</th></tr><tr><td>✅</td><td>geometry</td><td>13.6</td><td>&gt;0 / 유효 솔리드</td><td>치수 양수</td></tr><tr><td>✅</td><td>safety_factor</td><td>2.82</td><td>&gt;= 2.0</td><td>[analytic-bending] 최대응력 81.6MPa, SF 2.82</td></tr><tr><td>✅</td><td>dfm_wall</td><td>13.6</td><td>&gt;= 2.0 mm</td><td>최소 벽두께</td></tr><tr><td>✅</td><td>dfm_fillet</td><td>3</td><td>&gt;= 1.5 mm</td><td>코너 라운드(응력집중 완화)</td></tr><tr><td>✅</td><td>dfm_hole_edge</td><td>6</td><td>&gt;= 4.0 mm</td><td>볼트 홀 모서리 여유</td></tr><tr><td>✅</td><td>fatigue</td><td>1e+07</td><td>&gt;= 1e+06 cyc</td><td>σa 81.6MPa, 수명 1.0e+07cyc (σa ≤ 피로한도 → 무한수명(run-out))</td></tr><tr><td>✅</td><td>modal_freq</td><td>1.72e+04</td><td>&gt;= 150.0 Hz</td><td>1차 고유진동수 17177Hz</td></tr></table>
+<p>최종: 두께 <b>14.00mm</b>, 질량 <b>46g</b>, SF <b>2.60</b></p>
+
+<div class="warn">⚠️ <b>안전 고지</b>: 본 보고서의 물성값은 자리표시자일 수 있으며, 구조·모달·피로는
+해석적 근사다. 시스템은 설계 보조 도구이며, 최종 양산 판정은 정식 CAE 및 실물시험을 거쳐야 한다.</div>
+</body></html>

@@ -1,0 +1,21 @@
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+*.egg-info/
+build/
+dist/
+
+# macOS
+.DS_Store
+
+# 실행 산출물(필요시 보관, 기본은 무시)
+/review_report.*
+/bracket.step
+*.FCStd
+*.FCStd1
+trace.jsonl
+
+# 배포 zip(재생성 가능)
+/autodesign-llm.zip

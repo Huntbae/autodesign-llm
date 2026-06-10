@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "autodesign-llm"
+version = "0.1.0"
+description = "자연어로 자동차 부품을 설계하고 검증하는 LLM 기반 시스템 (코어)"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=7"]
+# 주: FreeCAD / CalculiX 는 별도 시스템 설치(혹은 conda: freecad). 코어는 의존성 없이 dry-run 동작.
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[project.scripts]
+autodesign = "autodesign.cli:main"
