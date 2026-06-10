@@ -44,6 +44,19 @@ class LocalLLM(JsonLLMBase):
         try:
             with urllib.request.urlopen(req, timeout=self.timeout) as r:
                 body = json.loads(r.read().decode("utf-8"))
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = json.loads(e.read().decode("utf-8")).get("error", "")
+            except Exception:
+                pass
+            if e.code == 404:                  # Ollama: 모델 미설치 시 404
+                raise RuntimeError(
+                    f"Ollama에 모델 '{self.model}'이 없습니다({detail}). "
+                    f"`ollama pull {self.model}` 하거나, 설치된 모델을 "
+                    "`OLLAMA_MODEL=모델명`으로 지정하세요. (오프라인은 --backend mock)"
+                ) from e
+            raise RuntimeError(f"Ollama 오류 HTTP {e.code}: {detail}") from e
         except urllib.error.URLError as e:
             raise RuntimeError(
                 f"Ollama({self.host})에 연결할 수 없습니다: {e.reason}. "

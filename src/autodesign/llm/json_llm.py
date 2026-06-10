@@ -81,7 +81,7 @@ class JsonLLMBase:
         system, user, schema = prompts.concept_user(natural_language)
         try:
             data = self._complete_json(system, user, schema)
-        except ValueError:
+        except (ValueError, RuntimeError):     # JSON 불량/백엔드 연결·모델 오류 → 폴백
             return base
         data.pop("rationale", None)
         return apply_concept_overrides(base, data)

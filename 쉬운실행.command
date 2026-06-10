@@ -19,18 +19,33 @@ if [ ! -x ".venv/bin/python" ]; then
   echo ""
 fi
 
-# ── 똑똑한 두뇌(로컬 LLM) 자동 선택: 있으면 쓰고, 없으면 기본 두뇌 ──
+# ── 똑똑한 두뇌(로컬 LLM) 자동 선택: 서버 + 설치된 모델까지 확인 ──
 BACKEND="mock"
 HOST="${OLLAMA_HOST:-http://localhost:11434}"
+MODEL=""
 if command -v ollama >/dev/null 2>&1; then
   curl -sf "${HOST}/api/tags" >/dev/null 2>&1 || { ollama serve >/tmp/ollama.log 2>&1 & sleep 3; }
-  if curl -sf "${HOST}/api/tags" >/dev/null 2>&1; then
-    BACKEND="local"
-    export OLLAMA_HOST="$HOST"
+  TAGS="$(curl -sf "${HOST}/api/tags" 2>/dev/null || echo "")"
+  if [ -n "$TAGS" ]; then
+    # 쓰고 싶은 모델이 실제 설치돼 있는지 확인(없는 모델을 부르면 404가 남)
+    for cand in "${OLLAMA_MODEL:-}" qwen2.5-coder:7b qwen2.5-coder:32b hermes3; do
+      [ -n "$cand" ] || continue
+      if printf '%s' "$TAGS" | grep -q "\"name\":\"$cand\""; then MODEL="$cand"; break; fi
+    done
+    # 그래도 없으면 설치된 아무 모델이나 사용
+    if [ -z "$MODEL" ]; then
+      MODEL="$(printf '%s' "$TAGS" | grep -o '"name":"[^"]*"' | head -1 | cut -d'"' -f4)"
+    fi
+    if [ -n "$MODEL" ]; then
+      BACKEND="local"
+      export OLLAMA_HOST="$HOST" OLLAMA_MODEL="$MODEL"
+    fi
   fi
 fi
 if [ "$BACKEND" = "local" ]; then
-  echo "  🧠 인공지능 두뇌: 내 컴퓨터의 AI (Ollama)"
+  echo "  🧠 인공지능 두뇌: 내 컴퓨터의 AI (Ollama · $MODEL)"
+elif command -v ollama >/dev/null 2>&1; then
+  echo "  🧠 인공지능 두뇌: 기본 모드 (AI 모델이 아직 없어요 → 어른과 함께: ./scripts/setup-local-llm.sh)"
 else
   echo "  🧠 인공지능 두뇌: 기본 모드 (AI 설치는 어른과 함께: ./scripts/setup-local-llm.sh)"
 fi
@@ -61,24 +76,34 @@ echo ""
 echo "  🏭 만드는 중... 조금만 기다려 주세요!"
 echo "  ──────────────────────────────────────"
 
-# ── 3) 실행 ──
+# ── 3) 실행 (성공/실패를 솔직하게 알려주기) ──
+RC=0
 if [ "$CHOICE" = "2" ]; then
-  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --optimize --report "$WORDS"
-  RESULT_HTML="review_report.html"
-  if command -v open >/dev/null 2>&1 && [ -f "$RESULT_HTML" ]; then open "$RESULT_HTML"; fi
+  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --optimize --report "$WORDS" || RC=$?
   echo ""
-  echo "  🎉 완성! 부품 보고서가 열렸어요: $DIR/$RESULT_HTML"
-else
-  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --exterior "$WORDS"
-  OBJ="car_body_concept.obj"
-  if [ -f "$OBJ" ] && command -v qlmanage >/dev/null 2>&1; then
-    qlmanage -p "$OBJ" >/dev/null 2>&1 &       # 맥의 3D 미리보기로 띄우기
-  elif [ -f "$OBJ" ] && command -v open >/dev/null 2>&1; then
-    open -R "$OBJ"                              # 안 되면 파일 위치 보여주기
+  if [ "$RC" -ge 2 ]; then
+    echo "  😢 앗, 문제가 생겼어요. 위의 메시지를 어른에게 보여주세요."
+  else
+    RESULT_HTML="review_report.html"
+    if command -v open >/dev/null 2>&1 && [ -f "$RESULT_HTML" ]; then open "$RESULT_HTML"; fi
+    echo "  🎉 완성! 부품 보고서가 열렸어요: $DIR/$RESULT_HTML"
   fi
+else
+  rm -f car_body_concept.obj                    # 지난 결과가 실패를 가리지 않게
+  PYTHONPATH=src .venv/bin/python -m autodesign.cli --backend "$BACKEND" --exterior "$WORDS" || RC=$?
   echo ""
-  echo "  🎉 완성! 자동차 3D 파일: $DIR/$OBJ"
-  echo "     (Finder에서 파일을 누르고 스페이스바 = 3D로 빙글빙글 보기)"
+  OBJ="car_body_concept.obj"
+  if [ "$RC" -ge 2 ] || [ ! -f "$OBJ" ]; then
+    echo "  😢 앗, 문제가 생겼어요. 위의 메시지를 어른에게 보여주세요."
+  else
+    if command -v qlmanage >/dev/null 2>&1; then
+      qlmanage -p "$OBJ" >/dev/null 2>&1 &     # 맥의 3D 미리보기로 띄우기
+    elif command -v open >/dev/null 2>&1; then
+      open -R "$OBJ"                            # 안 되면 파일 위치 보여주기
+    fi
+    echo "  🎉 완성! 자동차 3D 파일: $DIR/$OBJ"
+    echo "     (Finder에서 파일을 누르고 스페이스바 = 3D로 빙글빙글 보기)"
+  fi
 fi
 echo ""
 echo "  또 만들고 싶으면 이 아이콘을 다시 더블클릭하세요! 👋"

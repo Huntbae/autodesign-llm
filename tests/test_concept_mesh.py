@@ -89,6 +89,24 @@ def test_parse_concept_llm_failure_falls_back():
     assert spec.body_type == "coupe"                     # 규칙 파서 결과
 
 
+def test_parse_concept_backend_error_falls_back():
+    """Ollama 연결/모델 오류(RuntimeError)도 크래시 없이 폴백한다."""
+    from autodesign.llm.local_backend import LocalLLM
+
+    def boom(s, u, sc):
+        raise RuntimeError("Ollama에 모델이 없습니다")
+
+    spec = LocalLLM(transport=boom, max_retries=0).parse_concept("박스카 전기차")
+    assert spec.body_type == "van"                       # 폴백 + 박스카 인식
+
+
+def test_boxcar_preset():
+    from autodesign.exterior import MockConceptGenerator
+    spec = MockConceptGenerator().generate("박스카 형태의 전기차를 만들고 싶어")
+    assert spec.body_type == "van" and spec.roofline == "suv"
+    assert spec.height_mm > 1600                         # 박시한 비례
+
+
 def test_design_exterior_uses_injected_llm(tmp_path):
     """design_exterior(llm=)가 LLM의 parse_concept을 실제로 쓴다."""
     from autodesign.llm import MockLLM

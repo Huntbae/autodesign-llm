@@ -37,7 +37,7 @@ CONCEPT_SCHEMA: dict = {
     "required": ["body_type", "roofline"],
     "properties": {
         "body_type": {"type": "string",
-                      "enum": ["coupe", "sedan", "suv", "hatch", "wagon", "pickup"]},
+                      "enum": ["coupe", "sedan", "suv", "hatch", "wagon", "pickup", "van"]},
         "roofline": {"type": "string",
                      "enum": ["fastback", "notchback", "suv", "wagon"]},
         "length_mm": {"type": "number"}, "width_mm": {"type": "number"},
@@ -93,6 +93,9 @@ _PRESETS = {
     "pickup":  dict(body_type="pickup", roofline="suv", length_mm=5300, width_mm=1980,
                     height_mm=1820, streamline=0.28, hood_frac=0.34, cab_frac=0.34,
                     ride_height_mm=330, wheel_dia_mm=800, target_cd=0.40),
+    "van":     dict(body_type="van", roofline="suv", length_mm=4400, width_mm=1800,
+                    height_mm=1750, streamline=0.30, hood_frac=0.24, cab_frac=0.55,
+                    ride_height_mm=180, wheel_dia_mm=640, target_cd=0.36),
 }
 
 
@@ -109,6 +112,7 @@ class MockConceptGenerator:
         # 1) 차종 프리셋 선택
         preset = "coupe"
         if re.search(r"슈퍼카|하이퍼카|미드십|supercar|hypercar", tl): preset = "supercar"
+        elif re.search(r"박스카|미니밴|캠핑카|\bvan\b|mpv", tl): preset = "van"
         elif re.search(r"suv|크로스오버|crossover", tl): preset = "suv"
         elif re.search(r"픽업|트럭|pickup|truck", tl): preset = "pickup"
         elif re.search(r"세단|saloon|sedan", tl): preset = "sedan"
