@@ -70,6 +70,12 @@ def main(argv=None) -> int:
     print(outcome.loop.report())
     if outcome.optimization:
         print(); print(outcome.optimization.report())
+    if outcome.cad_paths:
+        print("\nCAD 파일 생성:")
+        for kind, p in outcome.cad_paths.items():
+            print(f"  - {kind.upper()}: {p}")
+    elif outcome.cad_note:
+        print(f"\n[CAD] {outcome.cad_note}")
     if outcome.report_paths:
         print("\n검토보고서 생성:")
         for kind, p in outcome.report_paths.items():

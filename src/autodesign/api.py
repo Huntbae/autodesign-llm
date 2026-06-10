@@ -24,6 +24,8 @@ class DesignOutcome:
     loop: LoopResult
     optimization: Optional[OptimizationResult] = None
     report_paths: Dict[str, str] = field(default_factory=dict)
+    cad_paths: Dict[str, str] = field(default_factory=dict)
+    cad_note: str = ""
 
     @property
     def converged(self) -> bool:
@@ -40,9 +42,9 @@ class DesignOutcome:
 
 def design_part(request: str, *, llm: Optional[LLMClient] = None,
                 kb: Optional[KnowledgeBase] = None, optimize: bool = False,
-                report: bool = False, out_dir: str = ".",
+                report: bool = False, cad: bool = True, out_dir: str = ".",
                 max_iter: int = 8) -> DesignOutcome:
-    """구조 부품 설계 파이프라인 전체 실행."""
+    """구조 부품 설계 파이프라인 전체 실행 (→ 검증된 CAD 파일 산출)."""
     llm = llm or MockLLM()
     kb = kb or KnowledgeBase.load_default()
 
@@ -55,10 +57,26 @@ def design_part(request: str, *, llm: Optional[LLMClient] = None,
     if optimize and loop_result.converged and loop_result.model is not None:
         outcome.optimization = lightweight(spec, loop_result.model)
 
+    # 최종 모델 확정(경량화 결과가 있으면 그 모델을 최종으로 반영)
+    if outcome.optimization is not None:
+        loop_result.model = outcome.optimization.optimized
+    final_model = loop_result.model
+
+    # CAD 파일 산출 (수렴 시, FreeCAD 설치 환경에서 STEP/FCStd 생성)
+    if cad and loop_result.converged and final_model is not None:
+        from .geometry import freecad_available
+        if freecad_available():
+            try:
+                outcome.cad_paths = final_model.export(out_dir)
+            except Exception as e:                      # 형상/저장 실패는 치명적 아님
+                outcome.cad_note = f"CAD export 실패: {e}"
+        else:
+            outcome.cad_note = (
+                "FreeCAD 미설치 → CAD 파일 미생성(dry-run). "
+                "설치(conda install -c conda-forge freecad) 시 STEP/FCStd 자동 산출."
+            )
+
     if report:
-        # 경량화 결과가 있으면 그 모델을 최종으로 반영
-        if outcome.optimization is not None:
-            loop_result.model = outcome.optimization.optimized
         outcome.report_paths = build_report(loop_result, prereview, out_dir=out_dir)
 
     return outcome
