@@ -82,8 +82,27 @@ def design_part(request: str, *, llm: Optional[LLMClient] = None,
     return outcome
 
 
-def design_exterior(request: str, *, speed_ms: float = 30.0):
-    """외형(공력) 개념 설계 파이프라인. 별도 모듈(exterior) 위임."""
-    from .exterior import ExteriorLoop, MockConceptGenerator
+def design_exterior(request: str, *, speed_ms: float = 30.0,
+                    mesh: bool = True, out_dir: str = ".", prefer_mesh: str = "auto"):
+    """외형(공력) 개념 설계 파이프라인 (→ 차량 컨셉 3D 메시 산출).
+
+    자연어 → 개념 형상 → 공력(Cd) 검증·교정 루프 → 최종 컨셉을 3D 메시(OBJ)로 산출.
+    """
+    from .exterior import (ExteriorLoop, MockConceptGenerator,
+                           get_concept_mesh_generator)
     concept = MockConceptGenerator().generate(request)
-    return concept, ExteriorLoop(speed_ms=speed_ms).run(concept)
+    result = ExteriorLoop(speed_ms=speed_ms).run(concept)
+
+    if mesh and result.concept is not None:
+        gen = get_concept_mesh_generator(prefer_mesh)
+        try:
+            cmesh = gen.generate_mesh(result.concept, prompt=request)
+        except Exception:                       # AI 어댑터 실패 → 절차적 폴백
+            from .exterior import ProceduralCarMesh
+            gen = ProceduralCarMesh()
+            cmesh = gen.generate_mesh(result.concept, prompt=request)
+        obj_path = cmesh.write_obj(f"{out_dir}/{result.concept.name}.obj")
+        result.mesh_paths = {"obj": obj_path}
+        result.mesh_source = cmesh.source
+
+    return concept, result
