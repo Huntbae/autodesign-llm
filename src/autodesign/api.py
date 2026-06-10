@@ -83,10 +83,13 @@ def design_part(request: str, *, llm: Optional[LLMClient] = None,
 
 
 def design_exterior(request: str, *, speed_ms: float = 30.0,
-                    mesh: bool = True, out_dir: str = ".", prefer_mesh: str = "auto"):
+                    mesh: bool = True, out_dir: str = ".", prefer_mesh: str = "auto",
+                    image: Optional[str] = None):
     """외형(공력) 개념 설계 파이프라인 (→ 차량 컨셉 3D 메시 산출).
 
-    자연어 → 개념 형상 → 공력(Cd) 검증·교정 루프 → 최종 컨셉을 3D 메시(OBJ)로 산출.
+    자연어(+선택 참고 이미지) → 개념 형상 → 공력(Cd) 검증·교정 루프
+    → 최종 컨셉을 3D 메시(OBJ)로 산출. image가 주어지고 AI 어댑터가 설치돼 있으면
+    이미지→3D 경로('이 디자인처럼')를 사용, 아니면 텍스트 기반 절차적 생성.
     """
     from .exterior import (ExteriorLoop, MockConceptGenerator,
                            get_concept_mesh_generator)
@@ -96,7 +99,7 @@ def design_exterior(request: str, *, speed_ms: float = 30.0,
     if mesh and result.concept is not None:
         gen = get_concept_mesh_generator(prefer_mesh)
         try:
-            cmesh = gen.generate_mesh(result.concept, prompt=request)
+            cmesh = gen.generate_mesh(result.concept, prompt=request, image=image)
         except Exception:                       # AI 어댑터 실패 → 절차적 폴백
             from .exterior import ProceduralCarMesh
             gen = ProceduralCarMesh()
