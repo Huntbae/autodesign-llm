@@ -31,6 +31,49 @@ class ConceptSpec:
         return (self.width_mm * 1e-3) * (self.height_mm * 1e-3) * 0.85
 
 
+# LLM 구조화 출력 스키마 — 자연어 묘사 → 컨셉 파라미터
+CONCEPT_SCHEMA: dict = {
+    "type": "object",
+    "required": ["body_type", "roofline"],
+    "properties": {
+        "body_type": {"type": "string",
+                      "enum": ["coupe", "sedan", "suv", "hatch", "wagon", "pickup"]},
+        "roofline": {"type": "string",
+                     "enum": ["fastback", "notchback", "suv", "wagon"]},
+        "length_mm": {"type": "number"}, "width_mm": {"type": "number"},
+        "height_mm": {"type": "number"}, "streamline": {"type": "number"},
+        "target_cd": {"type": "number"}, "ride_height_mm": {"type": "number"},
+        "wheel_dia_mm": {"type": "number"}, "hood_frac": {"type": "number"},
+        "cab_frac": {"type": "number"}, "overhang": {"type": "number"},
+        "rationale": {"type": "string"},
+    },
+}
+
+# 물리적으로 말이 되는 범위(LLM 출력 클램프)
+_BOUNDS = {
+    "length_mm": (3400.0, 5900.0), "width_mm": (1500.0, 2150.0),
+    "height_mm": (950.0, 2050.0), "streamline": (0.0, 1.0),
+    "target_cd": (0.20, 0.60), "ride_height_mm": (80.0, 400.0),
+    "wheel_dia_mm": (550.0, 900.0), "hood_frac": (0.22, 0.55),
+    "cab_frac": (0.25, 0.55), "overhang": (0.2, 1.0),
+}
+
+
+def apply_concept_overrides(spec: ConceptSpec, data: dict) -> ConceptSpec:
+    """LLM이 낸 파라미터를 기본 컨셉 위에 덮어쓰기(범위 클램프 포함)."""
+    out = replace(spec)
+    for key, val in data.items():
+        if not hasattr(out, key) or val is None:
+            continue
+        if key in _BOUNDS and isinstance(val, (int, float)):
+            lo, hi = _BOUNDS[key]
+            val = max(lo, min(float(val), hi))
+        if isinstance(getattr(out, key), str) and not isinstance(val, str):
+            continue
+        setattr(out, key, val)
+    return out
+
+
 # 차종별 기본 프리셋(텍스트 키워드로 선택)
 _PRESETS = {
     "supercar": dict(body_type="coupe", roofline="fastback", length_mm=4550, width_mm=2000,

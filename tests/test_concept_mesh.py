@@ -60,3 +60,39 @@ def test_design_exterior_emits_mesh(tmp_path):
 def test_design_exterior_mesh_disabled(tmp_path):
     _, result = design_exterior("SUV", mesh=False, out_dir=str(tmp_path))
     assert result.mesh_paths == {}
+
+
+# ---------------- 로컬 LLM 기반 컨셉 해석 (parse_concept) ----------------
+
+def test_parse_concept_via_local_llm_transport():
+    """LocalLLM(Ollama 경로)이 컨셉 JSON을 내면 베이스라인에 덮어써진다."""
+    from autodesign.llm.local_backend import LocalLLM
+
+    def transport(system, user, schema):
+        assert "디자이너" in system
+        return {"body_type": "suv", "roofline": "suv",
+                "height_mm": 1800, "streamline": 5.0}   # 5.0 → 1.0으로 클램프
+
+    llm = LocalLLM(transport=transport)
+    spec = llm.parse_concept("아무 묘사")
+    assert spec.body_type == "suv" and spec.roofline == "suv"
+    assert spec.height_mm == 1800
+    assert spec.streamline == 1.0                        # 범위 클램프 확인
+
+
+def test_parse_concept_llm_failure_falls_back():
+    """LLM이 계속 잘못된 JSON을 내면 규칙 기반 베이스라인으로 폴백."""
+    from autodesign.llm.local_backend import LocalLLM
+
+    llm = LocalLLM(transport=lambda s, u, sc: {"wrong": True}, max_retries=0)
+    spec = llm.parse_concept("낮은 스포츠 쿠페")
+    assert spec.body_type == "coupe"                     # 규칙 파서 결과
+
+
+def test_design_exterior_uses_injected_llm(tmp_path):
+    """design_exterior(llm=)가 LLM의 parse_concept을 실제로 쓴다."""
+    from autodesign.llm import MockLLM
+    concept, result = design_exterior("높은 SUV", llm=MockLLM(),
+                                      mesh=True, out_dir=str(tmp_path))
+    assert concept.body_type == "suv"
+    assert result.mesh_paths["obj"].endswith(".obj")

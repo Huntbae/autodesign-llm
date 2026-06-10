@@ -47,8 +47,9 @@ def main(argv=None) -> int:
     # ----- 외형(공력) 모드 -----
     if "--exterior" in flags:
         req = " ".join(args) if args else DEFAULT_EXT
-        print(f"[외형] 요구사항: {req}" + (f"  (참고이미지: {image})" if image else "") + "\n")
-        concept, out = design_exterior(req, image=image)
+        print(f"[외형] 요구사항: {req}  [backend={backend}]"
+              + (f"  (참고이미지: {image})" if image else "") + "\n")
+        concept, out = design_exterior(req, image=image, llm=get_llm(backend))
         print(f"개념 형상: {concept.body_type}/{concept.roofline}, "
               f"전장 {concept.length_mm:.0f}·전폭 {concept.width_mm:.0f}·전고 {concept.height_mm:.0f}mm, "
               f"streamline={concept.streamline:.2f}, 목표 Cd={concept.target_cd}\n")

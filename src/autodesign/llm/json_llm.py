@@ -70,6 +70,22 @@ class JsonLLMBase:
         rationale = data.pop("rationale", "")
         return GenerationResult(params=data, rationale=rationale)
 
+    def parse_concept(self, natural_language: str):
+        """자연어 차량 묘사 → ConceptSpec (LLM 해석 + 규칙 기반 베이스라인).
+
+        규칙 파서로 안전한 베이스라인을 만들고, LLM이 낸 파라미터를 덮어쓴다.
+        LLM 실패 시 베이스라인 그대로 반환(파이프라인 중단 없음).
+        """
+        from ..exterior.concept import MockConceptGenerator, apply_concept_overrides
+        base = MockConceptGenerator().generate(natural_language)
+        system, user, schema = prompts.concept_user(natural_language)
+        try:
+            data = self._complete_json(system, user, schema)
+        except ValueError:
+            return base
+        data.pop("rationale", None)
+        return apply_concept_overrides(base, data)
+
     # ---- 코드 생성(방식 B) ----
     def generate_freecad_script(self, spec: DesignSpec, feedback: str = "") -> str:
         system, user = prompts.codegen_user(spec, feedback)
