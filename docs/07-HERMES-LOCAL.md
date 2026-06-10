@@ -29,7 +29,8 @@ NOUS_API_KEY=... NOUS_INFERENCE_BASE_URL=https://inference-api.nousresearch.com/
 # 회귀 평가
 PYTHONPATH=src python3 -m autodesign.cli --eval --backend hermes
 ```
-`--backend auto`는 `~/.hermes` 자격이 있으면 자동으로 Hermes를 선택한다.
+기본(`auto`)은 오프라인 mock이다. Hermes는 `--backend hermes`로 명시 선택하거나
+`NOUS_API_KEY` 환경변수를 설정한다(그러면 auto가 Hermes 선택).
 
 ## 3. 실행 — Ollama Hermes (오프라인 대안)
 ```bash

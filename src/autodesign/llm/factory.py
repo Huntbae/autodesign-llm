@@ -13,15 +13,15 @@ def get_llm(backend: str = "auto", **kw) -> LLMClient:
     auto: ANTHROPIC_API_KEY 있으면 cloud, OLLAMA_HOST 있으면 local, 아니면 mock.
     """
     if backend == "auto":
-        if os.path.exists(os.path.expanduser("~/.hermes/shared/nous_auth.json")) \
-                or os.getenv("NOUS_API_KEY"):
-            backend = "hermes"      # 사용자의 Hermes(Nous) 우선
+        # 안전한 기본은 mock(오프라인, 비용 0). 실 LLM은 명시 환경변수로만 선택.
+        if os.getenv("NOUS_API_KEY"):
+            backend = "hermes"
         elif os.getenv("ANTHROPIC_API_KEY"):
             backend = "cloud"
         elif os.getenv("OLLAMA_HOST"):
             backend = "ollama-hermes"
         else:
-            backend = "mock"
+            backend = "mock"       # Hermes는 `--backend hermes`로 명시 선택
 
     if backend == "mock":
         return MockLLM()
