@@ -127,10 +127,10 @@ class MockConceptGenerator:
             spec.hood_frac = min(spec.hood_frac + 0.10, 0.55)
         if re.search(r"캡포워드|cab[-\s]?forward|짧은\s*보닛", tl):
             spec.hood_frac = max(spec.hood_frac - 0.10, 0.22)
-        if re.search(r"낮은|로우|슬램|low|slammed", tl):
+        if re.search(r"낮[은고게아]|로우|슬램|low|slammed", tl):
             spec.height_mm -= 90; spec.ride_height_mm = max(90, spec.ride_height_mm - 50)
             spec.streamline = min(spec.streamline + 0.08, 1.0)
-        if re.search(r"높은|키큰|tall|raised|리프트", tl):
+        if re.search(r"높[은고게아]|키큰|tall|raised|리프트", tl):
             spec.height_mm += 90; spec.ride_height_mm += 60
         if re.search(r"와이드|넓은|wide", tl): spec.width_mm += 90
         if re.search(r"좁은|narrow", tl): spec.width_mm -= 80
